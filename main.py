@@ -63,11 +63,16 @@ def process_token_data(emission_data, token_symbol):
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def preprocess_data(data):
     """Group tokens with <5% of weekly total into 'OTHER'"""
+    # Calculate total value and amount per week
+    weekly_totals = data.groupby(['week', 'token']).agg({
+        'value_usd': 'sum',
+        'amount': 'sum'
+    }).reset_index()
     
-    weekly_totals = data.groupby(['week', 'token'])['value_usd'].sum().reset_index()
     week_sums = weekly_totals.groupby('week')['value_usd'].sum().reset_index()
     week_sums.columns = ['week', 'total_week_value']
-
+    
+    # Calculate percentages and identify tokens to group
     weekly_totals = weekly_totals.merge(week_sums, on='week')
     weekly_totals['percentage'] = (weekly_totals['value_usd'] / weekly_totals['total_week_value']) * 100
     weekly_totals['token'] = weekly_totals.apply(
@@ -75,13 +80,20 @@ def preprocess_data(data):
         axis=1
     )
     
-    grouped_data = weekly_totals.groupby(['week', 'token'])['value_usd'].sum().reset_index()
+    # Reaggregate data with grouped tokens
+    grouped_data = weekly_totals.groupby(['week', 'token']).agg({
+        'value_usd': 'sum',
+        'amount': 'sum'
+    }).reset_index()
     
+    # Merge back the dates
     dates_data = data[['week', 'start_date', 'end_date']].drop_duplicates()
     final_data = grouped_data.merge(dates_data, on='week')
     
     return final_data
 
+
+@st.cache_data(ttl=3600)
 def load_selected_data(api_key, selected_tokens, token_map):
     """Load and process data for selected tokens"""
     progress_bar = st.progress(0)
@@ -123,7 +135,7 @@ def main():
     with st.sidebar:
         st.header("Configuration")
         api_key = st.text_input("Enter your API key", type="password")
-        
+
         if api_key:
             # Fetch token list
             tokens = fetch_token_list(api_key)
@@ -210,6 +222,7 @@ def main():
     filtered_data['hover_text'] = filtered_data.apply(
         lambda row: f"Token: {row['token']}<br>" +
                    f"Value: ${row['value_usd']:,.0f}<br>" +
+                   f"Amount: {row['amount']:,.2f}<br>" +
                    f"Week Start: {row['start_date'].strftime('%Y-%m-%d')}<br>" +
                    f"Week End: {row['end_date'].strftime('%Y-%m-%d')}",
         axis=1
