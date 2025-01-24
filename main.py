@@ -5,13 +5,15 @@ from datetime import datetime
 import requests
 from time import sleep
 
+THREE_HOURS = 3 * 60 * 60
+
 st.set_page_config(
     page_title="Token Unlocks Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=THREE_HOURS)
 def fetch_token_list(api_key):
     """Fetch list of all available tokens"""
     url = "https://api.unlocks.app/v1/token/list"
@@ -22,7 +24,7 @@ def fetch_token_list(api_key):
         return None
     return response.json().get("data")
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=THREE_HOURS)
 def fetch_emission_data(token_id, api_key):
     """Fetch emission data for a token"""
     url = "https://api.unlocks.app/v2/emission"
@@ -34,7 +36,7 @@ def fetch_emission_data(token_id, api_key):
         return None
     return response.json().get("data")
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=THREE_HOURS)
 def process_token_data(emission_data, token_symbol):
     """Process the API data into a DataFrame using weekly periods"""
     data = []
@@ -60,7 +62,7 @@ def process_token_data(emission_data, token_symbol):
     
     return pd.DataFrame(data)
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
+@st.cache_data(ttl=THREE_HOURS) 
 def preprocess_data(data):
     """Group tokens with <5% of weekly total into 'OTHER'"""
     # Calculate total value and amount per week
@@ -93,7 +95,7 @@ def preprocess_data(data):
     return final_data
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=THREE_HOURS)
 def load_selected_data(api_key, selected_tokens, token_map):
     """Load and process data for selected tokens"""
     progress_bar = st.progress(0)
